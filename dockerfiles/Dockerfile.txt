@@ -1,0 +1,44 @@
+#FROM julianassmann/opencv-cuda:latest
+FROM thecanadianroot/opencv-cuda:ubuntu20.04-cuda11.3.1-opencv4.5.2
+
+RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub
+
+# Install Miniconda
+RUN apt-get update && apt-get install -y wget bzip2 && \
+    wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
+    bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \
+    rm Miniconda3-latest-Linux-x86_64.sh && \
+    export PATH="/opt/conda/bin:$PATH"
+
+# Set PATH for Miniconda
+ENV PATH="/opt/conda/bin:$PATH"
+
+# Initialize Conda for interactive use
+RUN conda init bash
+
+RUN conda create --name myenv python=3.8 -y
+
+
+# Link cv2.so to the Conda environment
+RUN conda run -n myenv python -c "import site; print(site.getsitepackages()[0])" > /tmp/conda_site_packages.txt && \
+    ln -s /usr/local/lib/python3.8/dist-packages/cv2/python-3.8/cv2.cpython-38-x86_64-linux-gnu.so \
+    $(cat /tmp/conda_site_packages.txt)/cv2.so
+
+
+# Add Conda environment activation to .bashrc
+RUN echo "source /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
+    echo "conda activate myenv" >> ~/.bashrc
+
+
+# Link necessary libraries
+RUN ln -sf /usr/lib/x86_64-linux-gnu/libffi.so.7 /opt/conda/envs/myenv/lib/libffi.so.7
+
+# Copy requirements.txt to the container
+COPY requirements.txt /tmp/requirements.txt
+
+# Install Python packages using pip within the Conda environment
+# Uninstall opencv-python-headless after the pip install step as it can overwrite the system's existing OpenCV installation, which includes GPU support (like CUDA).
+RUN conda run -n myenv pip install -r /tmp/requirements.txt && \
+    conda run -n myenv pip uninstall -y opencv-python-headless && \
+    conda run -n myenv pip uninstall -y opencv-python
+

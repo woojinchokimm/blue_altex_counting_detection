@@ -1,0 +1,11 @@
+--extra-index-url https://download.pytorch.org/whl/cu113
+torch
+torchvision
+einops
+timm
+numpy==1.19.4
+pandas
+matplotlib
+albumentations
+ffmpeg-python
+deep_sort_realtime
